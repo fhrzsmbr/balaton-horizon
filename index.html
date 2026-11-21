@@ -16,7 +16,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#9cc3e6;font-family:sy
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (async()=>{
-const [hb,D]=await Promise.all([fetch('data/height.bin').then(r=>r.arrayBuffer()),fetch('data/roads.json').then(r=>r.json())]);
+const [hb,D]=await Promise.all([fetch('height.bin').then(r=>r.arrayBuffer()),fetch('roads.json').then(r=>r.json())]);
 const G=new Uint16Array(hb),{w:GW,h:GH,wx:WX,wz:WZ,roads:R}=D,dx=WX/(GW-1),dz=WZ/(GH-1),WL=104.6;
 const gh=(i,j)=>G[Math.max(0,Math.min(GH-1,j))*GW+Math.max(0,Math.min(GW-1,i))]/100;
 function hAt(x,z){const fx=x/dx,fz=z/dz,i=Math.floor(fx),j=Math.floor(fz),u=fx-i,v=fz-j;
