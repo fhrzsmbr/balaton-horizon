@@ -16,7 +16,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#9cc3e6;font-family:sy
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (async()=>{
-const [hb,D]=await Promise.all([fetch('height.bin').then(r=>r.arrayBuffer()),fetch('roads.json').then(r=>r.json())]);
+const F=async(n,j)=>{for(const p of[n,'data/'+n]){try{const r=await fetch(p);if(r.ok)return j?r.json():r.arrayBuffer()}catch(e){}}document.getElementById('ld').textContent='Nem található: '+n;throw n};
+const [hb,D,BJ]=await Promise.all([F('height.bin'),F('roads.json',1),F('buildings.json',1)]);
 const G=new Uint16Array(hb),{w:GW,h:GH,wx:WX,wz:WZ,roads:R}=D,dx=WX/(GW-1),dz=WZ/(GH-1),WL=104.6;
 const gh=(i,j)=>G[Math.max(0,Math.min(GH-1,j))*GW+Math.max(0,Math.min(GW-1,i))]/100;
 function hAt(x,z){const fx=x/dx,fz=z/dz,i=Math.floor(fx),j=Math.floor(fz),u=fx-i,v=fz-j;
@@ -56,6 +57,23 @@ const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32
 sc.add(new THREE.Mesh(rg,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})));
 function roadAt(x,z){let best=null,bd=1e9;for(let a=-0;a<1;a++){const L=hash.get(Math.floor(x/HS)+','+Math.floor(z/HS));if(!L)return null;
  for(const [x1,z1,x2,z2,t] of L){const ex=x2-x1,ez=z2-z1,u=Math.max(0,Math.min(1,((x-x1)*ex+(z-z1)*ez)/(ex*ex+ez*ez||1))),d=Math.hypot(x-x1-ex*u,z-z1-ez*u);if(d<TY[t][0]/2+.8&&d<bd){bd=d;best=t}}}return best}
+// épületek
+const BT=[{w:[0xf2e8d5,0xe9d9b8,0xd9c7a0,0xf5f5f0,0xe8c9a8],r:0x9c4a36,p:2.6},{w:[0xd8cfc0,0xc9c4bb,0xe0d6c4],r:0x777777,p:0},{w:[0xbfcad3,0xdadada,0xcdb89a],r:0x666666,p:0},{w:[0x9aa3a8,0xb5b0a0,0x8b9aa5],r:0x5d6468,p:0},{w:[0xf4f0e6],r:0x3a3f4a,p:7},{w:[0x8f8f8f,0xa09a8e,0xb0a58d],r:0x555555,p:0}];
+const bp=[],bcl=[],bi=[],bh=new Map(),V2=THREE.Vector2;
+BJ.b.forEach(([t,h,c],n)=>{const T=BT[t],wc=new THREE.Color(T.w[n%T.w.length]),rc=new THREE.Color(T.r),m=c.length/2;
+ let y0=1e9,y1=-1e9,cx=0,cz=0,x0=1e9,x9=-1e9,z0=1e9,z9=-1e9;
+ for(let k=0;k<m;k++){const x=c[2*k],z=c[2*k+1],y=hAt(x,z);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x/m;cz+=z/m;x0=Math.min(x0,x);x9=Math.max(x9,x);z0=Math.min(z0,z);z9=Math.max(z9,z)}
+ y0-=.3;const top=y1+h;
+ for(let k=0;k<m;k++){const j=(k+1)%m,xa=c[2*k],za=c[2*k+1],xb=c[2*j],zb=c[2*j+1],o=bp.length/3;
+  bp.push(xa,y0,za,xb,y0,zb,xb,top,zb,xa,top,za);for(let q=0;q<4;q++)bcl.push(wc.r,wc.g,wc.b);bi.push(o,o+1,o+2,o,o+2,o+3)}
+ if(T.p){const o=bp.length/3;bp.push(cx,top+T.p,cz);bcl.push(rc.r,rc.g,rc.b);
+  for(let k=0;k<m;k++){const j=(k+1)%m,r=bp.length/3;bp.push(c[2*k],top,c[2*k+1],c[2*j],top,c[2*j+1]);bcl.push(rc.r,rc.g,rc.b,rc.r,rc.g,rc.b);bi.push(r,r+1,o)}}
+ else{let tr=[];try{tr=THREE.ShapeUtils.triangulateShape(Array.from({length:m},(_,k)=>new V2(c[2*k],c[2*k+1])),[])}catch(e){}
+  const o=bp.length/3;for(let k=0;k<m;k++){bp.push(c[2*k],top,c[2*k+1]);bcl.push(rc.r,rc.g,rc.b)}for(const f of tr)bi.push(o+f[0],o+f[1],o+f[2])}
+ for(let a=Math.floor(x0/HS);a<=Math.floor(x9/HS);a++)for(let b=Math.floor(z0/HS);b<=Math.floor(z9/HS);b++){const k=a+','+b;let L=bh.get(k);if(!L)bh.set(k,L=[]);L.push([x0,z0,x9,z9,c])}});
+const bg2=new THREE.BufferGeometry();bg2.setAttribute('position',new THREE.Float32BufferAttribute(bp,3));bg2.setAttribute('color',new THREE.Float32BufferAttribute(bcl,3));bg2.setIndex(bi);bg2.computeVertexNormals();
+sc.add(new THREE.Mesh(bg2,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
+function inB(x,z){const L=bh.get(Math.floor(x/HS)+','+Math.floor(z/HS));if(L)for(const [a,b,c,d,r] of L){if(x<a||x>c||z<b||z>d)continue;let o=false;for(let i=0,j=r.length-2;i<r.length;j=i,i+=2)if((r[i+1]>z)!=(r[j+1]>z)&&x<(r[j]-r[i])*(z-r[i+1])/(r[j+1]-r[i+1])+r[i])o=!o;if(o)return true}return false}
 // autó
 const car=new THREE.Group(),bm=new THREE.MeshLambertMaterial({color:0xe8401c});
 const body=new THREE.Mesh(new THREE.BoxGeometry(1.9,.55,4.3),bm);body.position.y=.65;const cab=new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,2),new THREE.MeshLambertMaterial({color:0x222a33}));cab.position.set(0,1.15,-.2);car.add(body,cab);
@@ -88,7 +106,8 @@ function step(now){requestAnimationFrame(step);const dt=Math.min((now-last)/1000
  const nfx=Math.sin(S.yaw),nfz=Math.cos(S.yaw),nrx=Math.cos(S.yaw),nrz=-Math.sin(S.yaw);
  S.vx=nfx*vF+nrx*vL;S.vz=nfz*vF+nrz*vL;
  const gx=(hAt(S.x+3,S.z)-hAt(S.x-3,S.z))/6,gz=(hAt(S.x,S.z+3)-hAt(S.x,S.z-3))/6;S.vx-=gx*9*dt;S.vz-=gz*9*dt;
- S.x=Math.max(5,Math.min(WX-5,S.x+S.vx*dt));S.z=Math.max(5,Math.min(WZ-5,S.z+S.vz*dt));
+ const ox=S.x,oz=S.z;S.x=Math.max(5,Math.min(WX-5,S.x+S.vx*dt));S.z=Math.max(5,Math.min(WZ-5,S.z+S.vz*dt));
+ if(inB(S.x,S.z)||inB(S.x+nfx*2,S.z+nfz*2)){S.x=ox;S.z=oz;S.vx*=-.3;S.vz*=-.3}
  const g=Math.max(hAt(S.x,S.z),WL-.3)+(on?.45:0),hf=hAt(S.x+nfx*2,S.z+nfz*2),hbk=hAt(S.x-nfx*2,S.z-nfz*2),hl=hAt(S.x-nrx*1,S.z-nrz*1),hr=hAt(S.x+nrx*1,S.z+nrz*1);
  S.py+=(g-S.py)*Math.min(1,dt*15);S.pitch+=(Math.atan2(hbk-hf,4)-S.pitch)*Math.min(1,dt*8);S.roll+=(Math.atan2(hl-hr,2)-S.roll)*Math.min(1,dt*8);
  car.position.set(S.x,S.py,S.z);car.rotation.set(0,0,0);car.rotation.y=S.yaw;car.rotateX(S.pitch);car.rotateZ(S.roll);
